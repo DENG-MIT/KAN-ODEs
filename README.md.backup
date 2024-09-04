@@ -14,7 +14,8 @@ Direct training results and plots are saved in the two corresponding /results_ka
 
 - These three directories were uploaded to github with all figures already generated (and checkpoints saved). 
 - These runs were done shortly before upload to verify the functionality of the code, and are not the exact runs reported in the manuscript.
-- The exception to this are the results in /post_plots/activation_plots/ and /post_plots/contour_compare/, which correspond directly to the subfigures used in Fig. 4 of the manuscript (the checkpoint for this run is not uploaded due to its size, but is available on request).
+- The exception to this is Lotka-Volterra/results_kanode/checkpoints/LV_kanode_results_pruned_3nodes.mat, which is the final sparsified, pruned, and symbolically regressed model used in the original manuscript.
+- The exact subfigures used in Fig. 4 are also saved in this repository, in /post_plots/activation_plots/ and /post_plots/contour_compare/.
 
 As noted in the /src/ folder, the KolmogorovArnold.jl package used here is from https://github.com/vpuri3/KolmogorovArnold.jl, a source which is also referenced in the manuscript.
 

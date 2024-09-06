@@ -19,3 +19,10 @@ Direct training results and plots are saved in the two corresponding /results_ka
 As noted in the /src/ folder, the KolmogorovArnold.jl package used here is from https://github.com/vpuri3/KolmogorovArnold.jl, a source which is also referenced in the manuscript.
 
 
+# PDE examples
+
+Please find the source codes in the folder "PDE examples".
+
+# Citation
+
+To be included after acceptance.

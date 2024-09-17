@@ -38,13 +38,11 @@ function LV(u, p)
     return du
 end
 
-#if we prune, then the loss minimum might be before pruning
-#but we obviously want to plot the pruned KANODE
-#so update this based on training:
-#i.e. here the major pruning occurred at ~49000 epochs,
-#so we will search for the loss minimum after this point.
+#if we are plotting the pruned case, turn is_pruned=true 
+#and truncate the saved loss profile after the pruning event
+#we are plotting the minimum loss KAN-ODE, but for many pruned cases the loss minimum is before pruning
 is_pruned=false
-loss_minimum_truncation=50000
+loss_minimum_truncation=5000
 
 timestep=0.1
 n_plot_save=100
@@ -126,19 +124,13 @@ end
 width=70
 height=75
 
-#for activation plots, alpha is a function of the output to input range
-beta=1
-top_marg=-1.5Plots.mm
-bot_marg=-4.5Plots.mm
-left_marg=-1Plots.mm
-right_marg=-1Plots.mm
+
 sf=2
 scalefontsizes()
 scalefontsizes(1/sf)
 
 
-#take the best KAN at 2,000 epochs, which is still faster than the MLP
-#and plot the profile reconstructions for fig 3
+
 l_min=minimum(loss_list_kan)
 if is_pruned
     l_min=minimum(loss_list_kan[loss_minimum_truncation:end])

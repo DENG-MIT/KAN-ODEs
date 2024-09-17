@@ -15,9 +15,13 @@ using Zygote: gradient as Zgrad
 #this is a fix for an issue with an author's computer. Feel free to remove.
 ENV["GKSwstype"] = "100"
 
+#is_restart will load from the previously saved checkpoint
+ #this is useful for power interruptions
+ #also, pruning occurs upon restart, not during the training loop.
+#is_pruning, while is_restart is true and there is a load-able checkpoint, 
+#will prune the loaded network before resuming training.
 is_restart=false
 is_prune=false
-
 sparse_on=0 #set this to 1 and see reg_loss() and prune() functions if sparsity is desired 
 
 # Directories
@@ -34,7 +38,7 @@ mkpath(ckptpath)
 # Load the KAN package from https://github.com/vpuri3/KolmogorovArnold.jl
 include("src/KolmogorovArnold.jl")
 using .KolmogorovArnold
-#load the activation function getter (written for this project):
+#load the activation function getter (written for this project, see the corresponding script):
 include("Activation_getter.jl")
 
 
@@ -49,6 +53,7 @@ function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     #pruning function used to sparsify KAN-ODEs (i.e. delete negligible connections)
     #theta corresponds to gamma_pr in the manuscript (value of 1e-2)
     #not optimized - only runs a few times per training cycle, so extreme efficiency is not important
+    #make sure to turn regularization on (sparse_on=1 above) before pruning, otherwise it's unlikely anything will prune bc the KAN is not sparse
 
     #load current save
     load_file=dir*add_path*"checkpoints/"*fname*"_results.mat"
@@ -137,7 +142,7 @@ kan1 = Lux.Chain(
 )
 pM , stM  = Lux.setup(rng, kan1)
 
-#Can restart from a previous training result
+#Can restart from a previous training result, with is_restart defined as true above
 if is_restart==true
     load_file=dir*add_path*"checkpoints/"*fname*"_results.mat"
     p_list_=matread(load_file)["p_list"]
@@ -178,7 +183,7 @@ function predict(p)
     Array(train_node(u0, p, stM)[1])
 end
 
-#regularization loss (see Eq. 12)
+#regularization loss (see Eq. 12 in manuscript )
 function reg_loss(p, act_reg=1.0, entropy_reg=1.0)
     l1_temp=(abs.(p))
     activation_loss=sum(l1_temp)

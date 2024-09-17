@@ -77,7 +77,7 @@ add_path_mlp    = "results_mlp/"
 figpath=dir*add_path*"figs"
 mkpath(figpath)
 
-is_pruned=true #CHANGE THIS IF PLOTTING DENSE OR SPARSE KAN CONTOURS
+is_pruned=false #CHANGE THIS IF PLOTTING DENSE OR SPARSE KAN CONTOURS
 #true=sparse kan plotting (pretrained checkpoint provided, see load_file below)
 #false=dense kan plotting
 loss_minimum_truncation=5000
@@ -161,15 +161,8 @@ p_curr = p_list[idx_min,1:param_count_prune,1]
 pM_    = ComponentArray(p_curr,pM_axis)
 pM_new = [pM_.layer_1, pM_.layer_2]
 
-###same deal as in prune() in the KANODE driver. Standard forward pass automatically combines each activation via matrix multiplication.
-###But here, we want to visualize each individual activation. So we need to do some processing:
-
 #this calls the code from Activation_getter.jl to compute the individual activation function values (rather than the matrix multiplied outputs):
 activations_x, activations_y, activations_second, LV_samples_lay1, lay2, K=activation_getter(pM_new, kan1, grid_size)
-
-
-#good to go now. activations in first layer are activations_x and activations_y.
-#activations in second layer are ordered in activations.
 
 xsort=sortperm(X[1, :])
 ysort=sortperm(X[2, :])
@@ -195,113 +188,6 @@ train_node_ = NeuralODE(kan1, tspan, Tsit5(), saveat = timestep); #neural ode
 pred_sol_kan = train_node_(u0, ComponentArray(p_curr,pM_axis), stM)[1]
 
 
-
-#########################################
-#Up to here, the plotting script can be run on most KANODE and MLP checkpoints.
-#Below is the plotting code for the symbolic regression portion of Section A2.
-#This code is not general, and expects a KANODE with a size of [2, 3, 5], [3, 2, 5]
-#i.e., 6 activations per layer, and 2 layers.
-#We have included a pretrained pruned KANODE checkpoint in the results_kanode/checkpoints folder.
-#Replacing LV_kanode_results.mat with LV_kanode_results_pruned_3nodes.mat will load this pruned KANODE,
-#with which the below code can be uncommented and run.
-#########################################
-
-##########Below, the best symbolic fits for each activation (from Symbolic_reg.jl) are copied for plotting. 
-
-symb_acts=zeros(K, layer_width*2*2) #2d input and output
-for i in 1:K #hard coded for 3-wide hidden layer
-    xc=X[1, i]
-    yc=X[2, i]
-    symb_acts[i, 1]=0.545*xc-0.204
-    symb_acts[i, 4]=-0.605*yc+0.220-0.120/yc
-    symb_acts[i, 2]=-0.277*xc+0.794/xc+0.425
-    symb_acts[i, 5]=-0.506*yc+1.864-0.108/yc
-    symb_acts[i, 3]=0.334*xc-0.635
-    symb_acts[i, 6]=-0.780*yc-0.102
-    n1c=LV_samples_lay1[1, i]
-    n2c=LV_samples_lay1[2, i]
-    n3c=LV_samples_lay1[3, i]
-    symb_acts[i, 7]=-0.090*n1c^3+0.520n1c^2+0.890*n1c-0.411
-    symb_acts[i, 9]=-n2c^2+0.439*n2c/(n2c^2+0.0695)+4.99*n2c-1.652
-    symb_acts[i, 11]=2.929*n3c/(n3c^2+1.307*n3c+1.41)+0.684*n3c-0.490
-    symb_acts[i, 8]=0.168n1c^3-0.887n1c^2+2.242n1c+0.748
-    symb_acts[i, 10]=-3.201*n2c/(n2c^2+0.719*n2c+0.675)-n2c
-    symb_acts[i, 12]=0.353-1.281*n3c/(n3c^2+0.800)
-
-end
-
-activations_x_symb=symb_acts[:, 1:3]
-activations_y_symb=symb_acts[:, 4:6]
-activations_second_symb=symb_acts[:, 7:12]'
-
-##########Finally, generate the subfigures for Fig. 4(A-B)
-
-if layer_width==3 
-##only plot the activations for the pruned network.
-##otherwise skip directly to contour plots
-    #plot first layer, with curve transparency depending on the magnitude of the inputs/outputs
-    for i in 1:layer_width
-        input_range=X[1, xsort][end]-X[1, xsort][1]
-        output_range=maximum(activations_x[xsort, i])-minimum(activations_x[xsort, i])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(X[1, xsort], activations_x[xsort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[1, xsort]), sigdigits=1), floor(maximum(X[1, xsort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/X", string(i), ".png"))
-
-        input_range=X[2, ysort][end]-X[2, ysort][1]
-        output_range=maximum(activations_y[ysort, i])-minimum(activations_y[ysort, i])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(X[2, ysort], activations_y[ysort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[2, ysort]), sigdigits=1), floor(maximum(X[2, ysort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/Y", string(i), ".png"))
-
-        input_range=X[1, xsort][end]-X[1, xsort][1]
-        output_range=maximum(activations_x_symb[:, i])-minimum(activations_x_symb[:, i])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(X[1, xsort], activations_x_symb[xsort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[1, xsort]), sigdigits=1), floor(maximum(X[1, xsort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/X_symb_", string(i), ".png"))
-
-        input_range=X[2, ysort][end]-X[2, ysort][1]
-        output_range=maximum(activations_y_symb[:, i])-minimum(activations_y_symb[:, i])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(X[2, ysort], activations_y_symb[ysort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[2, ysort]), sigdigits=1), floor(maximum(X[2, ysort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/Y_symb_", string(i), ".png"))
-    end
-
-    #plot second layer, with curve transparency depending on the magnitude of the inputs/outputs
-    for i in 1:layer_width
-        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
-        output_range=maximum(activations_second[2*i-1, sort_second[i, :]])-minimum(activations_second[2*i-1, sort_second[i, :]])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second[2*i-1, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/second_", string(i), "_to_X.png"))
-
-        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
-        output_range=maximum(activations_second[2*i, sort_second[i, :]])-minimum(activations_second[2*i, sort_second[i, :]])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second[2*i, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/second_", string(i), "_to_Y.png"))
-
-        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
-        output_range=maximum(activations_second_symb[2*i-1, sort_second[i, :]])-minimum(activations_second_symb[2*i-1, :])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second_symb[2*i-1, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/second_symb_", string(i), "_to_X.png"))
-
-        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
-        output_range=maximum(activations_second[2*i, sort_second[i, :]])-minimum(activations_second[2*i, sort_second[i, :]])
-        acts_scale=output_range/input_range
-        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
-        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second_symb[2*i, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
-        png(plt, string(dir*add_path, "activation_plots/second_symb_", string(i), "_to_Y.png"))
-
-    end
-end
 ############Now contour plots, for Fig. 4(C)
 
 x = LinRange(0.25, 7.5, 100)
@@ -412,6 +298,113 @@ scatter!(reduce(hcat,solution.u)'[1:end_index, 1], reduce(hcat,solution.u)'[1:en
 
 png(plt, string(dir*add_path, "contour_compare/ydot_mlp.png"))
 
+
+#########################################
+#Up to here, the plotting script can be run on most KANODE and MLP checkpoints.
+#Below is the plotting code for the symbolic regression portion of Section A2.
+#This code is not general, and expects a KANODE with a size of [2, 3, 5], [3, 2, 5]
+#i.e., 6 activations per layer, and 2 layers.
+#We have included a pretrained pruned KANODE checkpoint in the results_kanode/checkpoints folder.
+#Replacing LV_kanode_results.mat with LV_kanode_results_pruned_3nodes.mat will load this pruned KANODE,
+#with which the below code can be uncommented and run.
+#########################################
+
+##########Below, the best symbolic fits for each activation (from Symbolic_reg.jl) are copied for plotting. 
+
+symb_acts=zeros(K, layer_width*2*2) #2d input and output
+for i in 1:K #hard coded for 3-wide hidden layer
+    xc=X[1, i]
+    yc=X[2, i]
+    symb_acts[i, 1]=0.545*xc-0.204
+    symb_acts[i, 4]=-0.605*yc+0.220-0.120/yc
+    symb_acts[i, 2]=-0.277*xc+0.794/xc+0.425
+    symb_acts[i, 5]=-0.506*yc+1.864-0.108/yc
+    symb_acts[i, 3]=0.334*xc-0.635
+    symb_acts[i, 6]=-0.780*yc-0.102
+    n1c=LV_samples_lay1[1, i]
+    n2c=LV_samples_lay1[2, i]
+    n3c=LV_samples_lay1[3, i]
+    symb_acts[i, 7]=-0.090*n1c^3+0.520n1c^2+0.890*n1c-0.411
+    symb_acts[i, 9]=-n2c^2+0.439*n2c/(n2c^2+0.0695)+4.99*n2c-1.652
+    symb_acts[i, 11]=2.929*n3c/(n3c^2+1.307*n3c+1.41)+0.684*n3c-0.490
+    symb_acts[i, 8]=0.168n1c^3-0.887n1c^2+2.242n1c+0.748
+    symb_acts[i, 10]=-3.201*n2c/(n2c^2+0.719*n2c+0.675)-n2c
+    symb_acts[i, 12]=0.353-1.281*n3c/(n3c^2+0.800)
+
+end
+
+activations_x_symb=symb_acts[:, 1:3]
+activations_y_symb=symb_acts[:, 4:6]
+activations_second_symb=symb_acts[:, 7:12]'
+
+##########Finally, generate the subfigures for Fig. 4(A-B)
+
+if layer_width==3 
+##only plot the activations for the pruned network.
+##otherwise skip directly to contour plots
+    #plot first layer, with curve transparency depending on the magnitude of the inputs/outputs
+    for i in 1:layer_width
+        input_range=X[1, xsort][end]-X[1, xsort][1]
+        output_range=maximum(activations_x[xsort, i])-minimum(activations_x[xsort, i])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(X[1, xsort], activations_x[xsort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[1, xsort]), sigdigits=1), floor(maximum(X[1, xsort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/X", string(i), ".png"))
+
+        input_range=X[2, ysort][end]-X[2, ysort][1]
+        output_range=maximum(activations_y[ysort, i])-minimum(activations_y[ysort, i])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(X[2, ysort], activations_y[ysort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[2, ysort]), sigdigits=1), floor(maximum(X[2, ysort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/Y", string(i), ".png"))
+
+        input_range=X[1, xsort][end]-X[1, xsort][1]
+        output_range=maximum(activations_x_symb[:, i])-minimum(activations_x_symb[:, i])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(X[1, xsort], activations_x_symb[xsort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[1, xsort]), sigdigits=1), floor(maximum(X[1, xsort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/X_symb_", string(i), ".png"))
+
+        input_range=X[2, ysort][end]-X[2, ysort][1]
+        output_range=maximum(activations_y_symb[:, i])-minimum(activations_y_symb[:, i])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(X[2, ysort], activations_y_symb[ysort, i], color = :black,  legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(X[2, ysort]), sigdigits=1), floor(maximum(X[2, ysort]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/Y_symb_", string(i), ".png"))
+    end
+
+    #plot second layer, with curve transparency depending on the magnitude of the inputs/outputs
+    for i in 1:layer_width
+        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
+        output_range=maximum(activations_second[2*i-1, sort_second[i, :]])-minimum(activations_second[2*i-1, sort_second[i, :]])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second[2*i-1, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/second_", string(i), "_to_X.png"))
+
+        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
+        output_range=maximum(activations_second[2*i, sort_second[i, :]])-minimum(activations_second[2*i, sort_second[i, :]])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second[2*i, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/second_", string(i), "_to_Y.png"))
+
+        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
+        output_range=maximum(activations_second_symb[2*i-1, sort_second[i, :]])-minimum(activations_second_symb[2*i-1, :])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second_symb[2*i-1, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/second_symb_", string(i), "_to_X.png"))
+
+        input_range=LV_samples_lay1[i, sort_second[i, :]][end]-LV_samples_lay1[i, sort_second[i, :]][1]
+        output_range=maximum(activations_second[2*i, sort_second[i, :]])-minimum(activations_second[2*i, sort_second[i, :]])
+        acts_scale=output_range/input_range
+        trans_curr=tanh(beta*acts_scale) #the more this activation changes the range passing through, the darker the line gets
+        plt=Plots.plot(LV_samples_lay1[i, sort_second[i, :]], activations_second_symb[2*i, sort_second[i, :]], color = :black, legend=false, size = (width, height), dpi=500, grid=false,xticks=[ceil(minimum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1), floor(maximum(LV_samples_lay1[i, sort_second[i, :]]), sigdigits=1)], yticks=false, alpha=trans_curr, framestyle = :box, bottom_margin=bot_marg, top_margin=top_marg, thickness_scaling=sf,xguidefontsize=18, left_margin=left_marg, right_margin=right_marg )
+        png(plt, string(dir*add_path, "activation_plots/second_symb_", string(i), "_to_Y.png"))
+
+    end
+end
 
 
 

@@ -19,6 +19,7 @@ using SymbolicUtils
 ##Automation of this process is possible but not needed for the sparse KAN-ODEs studied in this work.
 ##Snippets at the bottom expect a [2, 3, 5], [3, 2, 5] KAN-ODE, although the index values can be modified
 ##trivially to generalize them.
+##everything before then is just loading and processing of the saved KAN-ODE.
 
 
 #this is a fix for an issue with an author's computer. Feel free to remove.

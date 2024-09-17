@@ -34,6 +34,9 @@ mkpath(ckptpath)
 # Load the KAN package from https://github.com/vpuri3/KolmogorovArnold.jl
 include("src/KolmogorovArnold.jl")
 using .KolmogorovArnold
+#load the activation function getter (written for this project):
+include("Activation_getter.jl")
+
 
 #define LV
 function lotka!(du, u, p, t)
@@ -41,7 +44,6 @@ function lotka!(du, u, p, t)
     du[1] = α * u[1] - β * u[2] * u[1]
     du[2] = γ * u[1] * u[2] - δ * u[2]
 end
-
 
 function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     #pruning function used to sparsify KAN-ODEs (i.e. delete negligible connections)
@@ -59,62 +61,13 @@ function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     l=matread(load_file)["loss"]
     l_test=matread(load_file)["loss_test"]
 
-    ##long block of code here extracts the intermediate values in the KAN
-    ##because a forward pass returns only the matrix multiplication results,
-    ##and does not let us dig deeper into the actual activations.
+    
     pM_= ComponentArray(p,pM_axis)
     pM_new = [pM_.layer_1, pM_.layer_2]
-    lay1=kan_curr[1]
-    lay2=kan_curr[2]
-    st=stM[1]
-    pc1=pM_new[1].C
-    pc2=pM_new[2].C
-    pc1x=pc1[:, 1:grid_size]
-    pc1y=pc1[:, grid_size+1:end]
-    pw1=pM_new[1].W
-    pw2=pM_new[2].W
-    pw1x=pw1[:, 1]
-    pw1y=pw1[:, 2]
+    #this calls the code from Activation_getter.jl to compute the individual activation function values (rather than the matrix multiplied outputs):
+    activations_x, activations_y, activations_second=activation_getter(pM_new, kan1, grid_size)
 
-        
-    size_in  = size(X)                          # [I, ..., batch,]
-    size_out = (lay1.out_dims, size_in[2:end]...,) # [O, ..., batch,]
 
-    x = reshape(X, lay1.in_dims, :)
-    K = size(x, 2)
-
-    x_norm = lay1.normalizer(x)              # ∈ [-1, 1]
-    x_resh = reshape(x_norm, 1, :)                        # [1, K]
-    basis  = lay1.basis_func(x_resh, st.grid, lay1.denominator) # [G, I * K]
-    basisx=basis[:, 1:2:end] #odds are x
-    basisy=basis[:, 2:2:end] #evens are y
-    activations_x=basisx'*pc1x'
-    activations_y=basisy'*pc1y'
-    activations_x+=lay1.base_act.(x[1, :]).*pw1x'
-    activations_y+=lay1.base_act.(x[2, :]).*pw1y'
-
-    ##second layer
-    LV_samples_lay1=kan_curr[1](X, pM_.layer_1, stM[1])[1] #this is the activation function results for the first layer
-
-        
-    x = reshape(LV_samples_lay1, lay2.in_dims, :)
-    K = size(x, 2)
-
-    x_norm = lay2.normalizer(x)              # ∈ [-1, 1]
-    x_resh = reshape(x_norm, 1, :)                        # [1, K]
-    basis  = lay2.basis_func(x_resh, st.grid, lay2.denominator) # [G, I * K]
-    activations_second=zeros(lay2.in_dims*2, K)
-
-    ##we now have the first and second layer activations (activations_x and activations_y for first, activations_second for second)
-    ##now delete any negligible nodes:
-    
-    for i in 1:lay2.in_dims
-        basis_curr=basis[:, i:lay2.in_dims:end]
-        pc_curr=pc2[:, (i-1)*grid_size+1:i*grid_size]
-        activations_curr=basis_curr'*pc_curr'
-        activations_curr+=(lay2.base_act.(x[i, :]).*pw2[:, i]')
-        activations_second[2*i-1:2*i, :]=activations_curr'
-    end
     nodes_to_eval=1:layer_width
     nodes_to_keep=[]
     for i in nodes_to_eval

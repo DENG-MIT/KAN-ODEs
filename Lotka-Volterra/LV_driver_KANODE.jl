@@ -70,7 +70,7 @@ function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     pM_= ComponentArray(p,pM_axis)
     pM_new = [pM_.layer_1, pM_.layer_2]
     #this calls the code from Activation_getter.jl to compute the individual activation function values (rather than the matrix multiplied outputs):
-    activations_x, activations_y, activations_second=activation_getter(pM_new, kan1, grid_size)
+    activations_x, activations_y, activations_second=activation_getter(pM_, pM_new, kan_curr, grid_size)
 
 
     nodes_to_eval=1:layer_width

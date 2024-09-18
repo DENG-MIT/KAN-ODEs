@@ -125,7 +125,7 @@ pM_new = [pM_.layer_1, pM_.layer_2]
 
 
 #this calls the code from Activation_getter.jl to compute the individual activation function values (rather than the matrix multiplied outputs):
-activations_x, activations_y, activations_second, LV_samples_lay1,=activation_getter(pM_new, kan1, grid_size)
+activations_x, activations_y, activations_second, LV_samples_lay1,=activation_getter(pM_, pM_new, kan1, grid_size)
 
 #######symbolic regression:
 inputs_lay1=X

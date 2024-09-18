@@ -1,7 +1,6 @@
 #Lots of the drivers and plotters have to extract the activations from the KAN-ODE
 #for plotting, visualization, pruning, etc. This shared function enables this. 
-function activation_getter(pM_new, kan1, grid_size)
-
+function activation_getter(pM_, pM_new, kan1, grid_size)
     lay1=kan1[1]
     lay2=kan1[2]
     st=stM[1]

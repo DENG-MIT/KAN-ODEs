@@ -2,21 +2,31 @@
 The code is associated with the paper entitled "KAN-ODEs: Kolmogorov-Arnold Network Ordinary Differential Equations for Learning Dynamical Systems and Hidden Physics"
 
 # Lotka-Volterra
-The Lotka-Volterra directory contains three julia codes:
+The Lotka-Volterra directory contains six julia codes:
 
-- LV_driver_KANODE.jl runs KANODE training on the LV example, with customizable KAN size.
+- LV_driver_KANODE.jl runs KAN-ODE training on the LV example, with customizable KAN size and options for sparsification and pruning.
 - LV_driver_MLP.jl runs MLP-NODE training on the LV example, with customizable MLP size.
-- Plotting.jl includes code used to generate Figs. 3 and 4 in the main manuscript. Please see comments for more details on the plotting contained here.
+- Activation_getter.jl is a function called throughout training and plotting to extract individual activation functions from the global KAN-ODE.
+- Plotting_standard.jl includes code used to generate Fig. 3(A, B1, B2) in the manuscript, using saved checkpoints from the above two codes.
+- Symbolic_reg.jl takes a pruned KAN-ODE save and breaks it into individual activations, allowing for sparse regression on each activation function (sparse regression by direct function calling in the REPL).
+- Then, Plotting_symbolic.jl generates the subplots of Fig. 4, using saved checkpoints from KAN-ODE and MLP-NODE training as well as symbolic results copied from Symbolic_reg.jl.
 
-trend_plotter.py is the simple code used to generate Fig. 3(C).
+Additionally, trend_plotter.py is the simple code used to generate Fig. 3(C), via hand-saved results from the two driver codes.
 
 Direct training results and plots are saved in the two corresponding /results_kanode/ and /results_mlp/ directories. Plotting.jl saves into /post_plots/.
 
-- These three directories were uploaded to github with all figures already generated (and checkpoints saved). 
+- The LV example was uploaded to github with all figures already generated (and checkpoints saved). 
 - These runs were done shortly before upload to verify the functionality of the code, and are not the exact runs reported in the manuscript.
-- The exception to this is Lotka-Volterra/results_kanode/checkpoints/LV_kanode_results_pruned_3nodes.mat, which is the final sparsified, pruned, and symbolically regressed model used in the original manuscript.
-- The exact subfigures used in Fig. 4 are also saved in this repository, in /post_plots/activation_plots/ and /post_plots/contour_compare/.
+- The exception to this are the figures in /post_plots/activation_plots/ and /post_plots/contour_compare/, which correspond directly to the subfigures used in Fig. 4 of the manuscript. The checkpoint corresponding to these plots is saved in /results_kanode/checkpoints/LV_kanode_results_pruned_3nodes_trunc.mat.
+
+**We recommend starting from LV_driver_KANODE.jl. Many of the other codes provided here are tailored specifically for the results shown in the manuscript, and are included for replicability of our results. For general use, the training loop of LV_driver_KANODE.jl will be of most use, and it includes its own plotting and visualization loops during the training cycle, saved to /results_kanode/fi.**
 
 As noted in the /src/ folder, the KolmogorovArnold.jl package used here is from https://github.com/vpuri3/KolmogorovArnold.jl, a source which is also referenced in the manuscript.
 
+# PDE examples
 
+Please find the source codes in the folder "PDE examples".
+
+# Citation
+
+To be included after acceptance.

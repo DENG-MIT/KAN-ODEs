@@ -15,9 +15,13 @@ using Zygote: gradient as Zgrad
 #this is a fix for an issue with an author's computer. Feel free to remove.
 ENV["GKSwstype"] = "100"
 
+#is_restart will load from the previously saved checkpoint
+ #this is useful for power interruptions
+ #also, pruning occurs upon restart, not during the training loop.
+#is_pruning, while is_restart is true and there is a load-able checkpoint, 
+#will prune the loaded network before resuming training.
 is_restart=false
 is_prune=false
-
 sparse_on=0 #set this to 1 and see reg_loss() and prune() functions if sparsity is desired 
 
 # Directories
@@ -34,6 +38,9 @@ mkpath(ckptpath)
 # Load the KAN package from https://github.com/vpuri3/KolmogorovArnold.jl
 include("src/KolmogorovArnold.jl")
 using .KolmogorovArnold
+#load the activation function getter (written for this project, see the corresponding script):
+include("Activation_getter.jl")
+
 
 #define LV
 function lotka!(du, u, p, t)
@@ -42,11 +49,11 @@ function lotka!(du, u, p, t)
     du[2] = γ * u[1] * u[2] - δ * u[2]
 end
 
-
 function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     #pruning function used to sparsify KAN-ODEs (i.e. delete negligible connections)
     #theta corresponds to gamma_pr in the manuscript (value of 1e-2)
     #not optimized - only runs a few times per training cycle, so extreme efficiency is not important
+    #make sure to turn regularization on (sparse_on=1 above) before pruning, otherwise it's unlikely anything will prune bc the KAN is not sparse
 
     #load current save
     load_file=dir*add_path*"checkpoints/"*fname*"_results.mat"
@@ -59,62 +66,13 @@ function prune(p, kan_curr, layer_width, grid_size, pM_axis, theta=1e-2)
     l=matread(load_file)["loss"]
     l_test=matread(load_file)["loss_test"]
 
-    ##long block of code here extracts the intermediate values in the KAN
-    ##because a forward pass returns only the matrix multiplication results,
-    ##and does not let us dig deeper into the actual activations.
+    
     pM_= ComponentArray(p,pM_axis)
     pM_new = [pM_.layer_1, pM_.layer_2]
-    lay1=kan_curr[1]
-    lay2=kan_curr[2]
-    st=stM[1]
-    pc1=pM_new[1].C
-    pc2=pM_new[2].C
-    pc1x=pc1[:, 1:grid_size]
-    pc1y=pc1[:, grid_size+1:end]
-    pw1=pM_new[1].W
-    pw2=pM_new[2].W
-    pw1x=pw1[:, 1]
-    pw1y=pw1[:, 2]
+    #this calls the code from Activation_getter.jl to compute the individual activation function values (rather than the matrix multiplied outputs):
+    activations_x, activations_y, activations_second=activation_getter(pM_new, kan1, grid_size)
 
-        
-    size_in  = size(X)                          # [I, ..., batch,]
-    size_out = (lay1.out_dims, size_in[2:end]...,) # [O, ..., batch,]
 
-    x = reshape(X, lay1.in_dims, :)
-    K = size(x, 2)
-
-    x_norm = lay1.normalizer(x)              # ∈ [-1, 1]
-    x_resh = reshape(x_norm, 1, :)                        # [1, K]
-    basis  = lay1.basis_func(x_resh, st.grid, lay1.denominator) # [G, I * K]
-    basisx=basis[:, 1:2:end] #odds are x
-    basisy=basis[:, 2:2:end] #evens are y
-    activations_x=basisx'*pc1x'
-    activations_y=basisy'*pc1y'
-    activations_x+=lay1.base_act.(x[1, :]).*pw1x'
-    activations_y+=lay1.base_act.(x[2, :]).*pw1y'
-
-    ##second layer
-    LV_samples_lay1=kan_curr[1](X, pM_.layer_1, stM[1])[1] #this is the activation function results for the first layer
-
-        
-    x = reshape(LV_samples_lay1, lay2.in_dims, :)
-    K = size(x, 2)
-
-    x_norm = lay2.normalizer(x)              # ∈ [-1, 1]
-    x_resh = reshape(x_norm, 1, :)                        # [1, K]
-    basis  = lay2.basis_func(x_resh, st.grid, lay2.denominator) # [G, I * K]
-    activations_second=zeros(lay2.in_dims*2, K)
-
-    ##we now have the first and second layer activations (activations_x and activations_y for first, activations_second for second)
-    ##now delete any negligible nodes:
-    
-    for i in 1:lay2.in_dims
-        basis_curr=basis[:, i:lay2.in_dims:end]
-        pc_curr=pc2[:, (i-1)*grid_size+1:i*grid_size]
-        activations_curr=basis_curr'*pc_curr'
-        activations_curr+=(lay2.base_act.(x[i, :]).*pw2[:, i]')
-        activations_second[2*i-1:2*i, :]=activations_curr'
-    end
     nodes_to_eval=1:layer_width
     nodes_to_keep=[]
     for i in nodes_to_eval
@@ -184,7 +142,7 @@ kan1 = Lux.Chain(
 )
 pM , stM  = Lux.setup(rng, kan1)
 
-#Can restart from a previous training result
+#Can restart from a previous training result, with is_restart defined as true above
 if is_restart==true
     load_file=dir*add_path*"checkpoints/"*fname*"_results.mat"
     p_list_=matread(load_file)["p_list"]
@@ -225,7 +183,7 @@ function predict(p)
     Array(train_node(u0, p, stM)[1])
 end
 
-#regularization loss (see Eq. 12)
+#regularization loss (see Eq. 12 in manuscript )
 function reg_loss(p, act_reg=1.0, entropy_reg=1.0)
     l1_temp=(abs.(p))
     activation_loss=sum(l1_temp)

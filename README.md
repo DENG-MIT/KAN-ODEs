@@ -1,5 +1,5 @@
 # KAN-ODEs
-The code is associated with the paper entitled "KAN-ODEs: Kolmogorov-Arnold Network Ordinary Differential Equations for Learning Dynamical Systems and Hidden Physics"
+The code is associated with the paper entitled "KAN-ODEs: Kolmogorov-Arnold Network Ordinary Differential Equations for Learning Dynamical Systems and Hidden Physics" ([CMAME](https://www.sciencedirect.com/science/article/pii/S0045782524006522), [Arxiv](https://arxiv.org/abs/2407.04192)).
 
 # Lotka-Volterra
 The Lotka-Volterra directory contains six julia codes:
@@ -29,4 +29,18 @@ Please find the source codes in the folder "PDE examples".
 
 # Citation
 
-To be included after acceptance.
+If you use the code in your research or if you find our paper useful, please cite [this paper](https://www.sciencedirect.com/science/article/pii/S0045782524006522):
+
+```
+@article{koenig2024kanodes,
+title = {KAN-ODEs: Kolmogorov–Arnold network ordinary differential equations for learning dynamical systems and hidden physics},
+journal = {Computer Methods in Applied Mechanics and Engineering},
+volume = {432},
+pages = {117397},
+year = {2024},
+issn = {0045-7825},
+doi = {https://doi.org/10.1016/j.cma.2024.117397},
+url = {https://www.sciencedirect.com/science/article/pii/S0045782524006522},
+author = {Benjamin C. Koenig and Suyong Kim and Sili Deng},
+}
+```

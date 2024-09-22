@@ -11,7 +11,7 @@ Please find the source codes in the folder "PDE examples".
 
 # Auxillary Pytorch code
 
-The results in the corresponding manuscript are generated exclusively in Julia. We strongly recommend using the Julia code for speed, convergence, and robustness. However, we provide Pytorch code as well for users who may be interested in experimenting with KAN-ODEs in Python. 
+The results in the corresponding manuscript are generated exclusively in Julia. We strongly recommend using the Julia code for speed, convergence, and robustness. However, we provide Pytorch code as well for users who may be interested in experimenting with KAN-ODEs in Python. Please find these in the folder "Lotka-Volterra-Pytorch".
 
 # Citation
 

@@ -21,3 +21,5 @@ Direct training results and plots are saved in the two corresponding /results_ka
 **We recommend starting from LV_driver_KANODE.jl. Many of the other codes provided here are tailored specifically for the results shown in the manuscript, and are included largely just for replicability of our results. For general use, the training loop of LV_driver_KANODE.jl will be of most use, and  includes its own plotting and visualization loops during the training cycle (saved to /results_kanode/figs/).**
 
 As noted in the /src/ folder, the KolmogorovArnold.jl package used here is from https://github.com/vpuri3/KolmogorovArnold.jl, a source which is also referenced in the manuscript.
+
+Julia 1.11.1 was used to run LV_driver_KANODE.jl in the current repository. Package information is available in Project.toml and Manifest.toml.

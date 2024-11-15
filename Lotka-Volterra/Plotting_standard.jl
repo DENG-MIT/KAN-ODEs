@@ -3,13 +3,14 @@ using NNlib, ConcreteStructs, WeightInitializers, ChainRulesCore
 using ComponentArrays
 using BenchmarkTools
 using OrdinaryDiffEq, Plots, DiffEqFlux, ForwardDiff
-using Flux: ADAM, mae, update!
+using Flux: Adam, mae, update!
 using Flux
 using Optimisers
 using MAT
 using Plots
 using ProgressBars
 using Zygote: gradient as Zgrad
+using Zygote
 
 using SymbolicRegression
 using SymbolicUtils
@@ -166,11 +167,12 @@ u2_mlp=matread(load_file_mlp)["kan_pred_u2"]
 l_min=minimum(loss_list_mlp)
 idx_min = findfirst(x -> x == l_min, loss_list_mlp)
 p_mlp = p_list_mlp[idx_min,:,1]
-MLP = DiffEqFlux.Chain(DiffEqFlux.Dense(2 => 50, tanh), DiffEqFlux.DiffEqFlux.Dense(50 => 2))
-MLP[1].weight.=reshape(p_mlp[1:100], 50, 2)
-MLP[1].bias.=reshape(p_mlp[101:150], 50)
-MLP[2].weight.=reshape(p_mlp[151:250], 2, 50)
-MLP[2].bias.=reshape(p_mlp[251:252], 2)
+#MLP = DiffEqFlux.Chain(DiffEqFlux.Dense(2 => 50, tanh), DiffEqFlux.DiffEqFlux.Dense(50 => 2))
+
+#MLP[1].init_weight.=reshape(p_mlp[1:100], 50, 2)
+#MLP[1].bias.=reshape(p_mlp[101:150], 50)
+#MLP[2].weight.=reshape(p_mlp[151:250], 2, 50)
+#MLP[2].bias.=reshape(p_mlp[251:252], 2)
 
 plt=Plots.plot(loss_list_kan, yaxis=:log, label="KAN train", dpi=600, size=(325, 290), xticks=LinRange(0, round(length(loss_list_kan), sigdigits=1), 3), grid=false)
 plot!(ylims=[minimum(loss_list_kan)*0.9, maximum([maximum(loss_list_kan), maximum(loss_list_mlp), maximum(loss_list_test_kan), maximum(loss_list_test_mlp)])*1.1])

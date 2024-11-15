@@ -3,7 +3,7 @@ using NNlib, ConcreteStructs, WeightInitializers, ChainRulesCore
 using ComponentArrays
 using BenchmarkTools
 using OrdinaryDiffEq, Plots, DiffEqFlux, ForwardDiff
-using Flux: ADAM, mae, update!
+using Flux: Adam, mae, update!
 using Flux
 using Optimisers
 using MAT
@@ -58,36 +58,38 @@ Xn = deepcopy(X)
 
 # Define MLP 
 ###As in KANODE code, the layers can be modified here to recreate the testing in section A2 of the manuscript
-MLP = Chain(Dense(2 => 50, tanh), Dense(50 => 2)) #like in https://github.com/RajDandekar/MSML21_BayesianNODE/blob/main/BayesiaNODE_SGLD_LV.jl
+MLP = Lux.Chain(Lux.Dense(2 => 50, tanh), Lux.Dense(50 => 2)) #like in https://github.com/RajDandekar/MSML21_BayesianNODE/blob/main/BayesiaNODE_SGLD_LV.jl
 ## **also note here that the KANODE and MLP-NODE codes use different packages.
 ## **so if the Dense command fails, make sure to use a different REPL (i.e. one that you did not previously run the KANODE code on)
-
-
+p_, sT_ = Lux.setup(rng, MLP)
+pM_data = getdata(ComponentArray(p_))
+pM_axis = getaxes(ComponentArray(p_))
+p=Float32.(deepcopy(pM_data)./1e5)
 # Define Neural ODE with MLP
 
 train_node = NeuralODE(MLP, tspan_train, Tsit5(), saveat = t_train); #neural ode
 train_node_test = NeuralODE(MLP, tspan, Tsit5(), saveat = t); #neural ode
 
 function predict(p)
-    Array(train_node(u0, p))
+    Array(train_node(u0, p, sT_)[1])
 end
 function loss(p)
-    mean(abs2, Xn[:, 1:end_index].- predict(p))
+    mean(abs2, Xn[:, 1:end_index].- predict(ComponentArray(p,pM_axis)))
 end
 
 function predict_test(p)
-    Array(train_node_test(u0, p))
+    Array(train_node_test(u0, p, sT_)[1])
 end
 function loss_test(p)
-    mean(abs2, Xn .- predict_test(p))
+    mean(abs2, Xn .- predict_test(ComponentArray(p,pM_axis)))
 end
 
 # TRAINING
-du = [0.0; 0.0]
-p = deepcopy(train_node.p)
+du = Float32.([0.0; 0.0])
+#p = deepcopy(train_node.p)
 print("parameter size:")
 print(length(p))
-opt = ADAM(1e-2)
+opt = Adam(1e-2)
 l = []
 l_test=[]
 
@@ -114,7 +116,7 @@ function plotter(l, p_list, epoch)
     train_node_ = NeuralODE(MLP, tspan, Tsit5(), saveat = timestep); #neural ode
     pred_sol_true = solution
     p_curr = p_list[end]
-    pred_sol_kan = train_node_(u0, p_curr)
+    pred_sol_kan = train_node_(u0, ComponentArray(p_curr,pM_axis), sT_)[1]
     plt=scatter(pred_sol_true, alpha = 0.75)
     plot!(pred_sol_kan)
     vline!([3.5], color=:black, label = "train/test split")
@@ -136,7 +138,7 @@ function plotter(l, p_list, epoch)
     for j = 1:size(l,1)
         l_test_[j] = l_test[j]
     end
-    pred_sol_kan = train_node_(u0, p_opt)
+    pred_sol_kan = train_node_(u0, ComponentArray(p_opt,pM_axis), sT_)[1]
     file = matopen(dir*add_path*"checkpoints/"*fname*"_results_MLP.mat", "w")
     write(file, "p_list", p_list_)
     write(file, "loss", l_)

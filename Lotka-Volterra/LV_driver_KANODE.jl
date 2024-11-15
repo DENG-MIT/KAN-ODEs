@@ -3,7 +3,7 @@ using NNlib, ConcreteStructs, WeightInitializers, ChainRulesCore
 using ComponentArrays
 using BenchmarkTools
 using OrdinaryDiffEq, Plots, DiffEqFlux, ForwardDiff
-using Flux: ADAM, mae, update!
+using Flux: Adam, mae, update!
 using Flux
 using Optimisers
 using MAT
@@ -172,7 +172,7 @@ end
 
 pM_data = getdata(ComponentArray(pM))
 pM_axis = getaxes(ComponentArray(pM))
-p = (deepcopy(pM_data))
+p = (deepcopy(pM_data))./1e5
 
 
 ###########KAN is fully defined. Now, define the KAN ODE wrapped around it.
@@ -216,7 +216,7 @@ end
 
 # TRAINING
 du = [0.0; 0.0]
-opt = ADAM(5e-4)
+opt = Flux.Adam(5e-4)
 
 N_iter = 1e5
 i_current = 1

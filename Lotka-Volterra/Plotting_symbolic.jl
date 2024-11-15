@@ -119,11 +119,16 @@ u2_mlp=matread(load_file_mlp)["kan_pred_u2"]
 l_min=minimum(loss_list_mlp)
 idx_min = findfirst(x -> x == l_min, loss_list_mlp)
 p_mlp = p_list_mlp[idx_min,:,1]
-MLP = DiffEqFlux.Chain(DiffEqFlux.Dense(2 => 50, tanh), DiffEqFlux.DiffEqFlux.Dense(50 => 2))
-MLP[1].weight.=reshape(p_mlp[1:100], 50, 2)
-MLP[1].bias.=reshape(p_mlp[101:150], 50)
-MLP[2].weight.=reshape(p_mlp[151:250], 2, 50)
-MLP[2].bias.=reshape(p_mlp[251:252], 2)
+MLP = Lux.Chain(Lux.Dense(2 => 50, tanh), Lux.Dense(50 => 2))
+pM_mlp , stM_mlp  = Lux.setup(rng, MLP)
+pM_data_mlp = getdata(ComponentArray(pM_mlp))
+pM_axis_mlp = getaxes(ComponentArray(pM_mlp)) 
+p_mlp=ComponentArray(p_mlp, pM_axis_mlp)
+
+#MLP[1].weight.=reshape(p_mlp[1:100], 50, 2)
+#MLP[1].bias.=reshape(p_mlp[101:150], 50)
+#MLP[2].weight.=reshape(p_mlp[151:250], 2, 50)
+#MLP[2].bias.=reshape(p_mlp[251:252], 2)
 loss_list_kan=matread(load_file)["loss"]
 loss_list_test_kan=matread(load_file)["loss_test"]
 
@@ -212,7 +217,7 @@ for i = 1:length(x)
     for j = 1:length(y)
         xdot[i,j], ydot[i,j] = LV([xmesh[i,j], ymesh[i,j]], p_) #actual
         xdot_kan[i,j], ydot_kan[i,j] = kan1([xmesh[i,j], ymesh[i,j]], pM_, stM)[1] #kan
-        xdot_mlp[i,j], ydot_mlp[i,j] = MLP([xmesh[i,j], ymesh[i,j]]) #mlp
+        xdot_mlp[i,j], ydot_mlp[i,j] = MLP([xmesh[i,j], ymesh[i,j]], p_mlp, stM_mlp)[1] #mlp
         xdot_symb[i,j]=1.495*xmesh[i,j]-0.986*xmesh[i,j]*ymesh[i,j] #global symbolic representation (far right in Fig. 4(C))
         ydot_symb[i,j]=.970*xmesh[i,j]*ymesh[i,j]-2.929*ymesh[i,j] 
 

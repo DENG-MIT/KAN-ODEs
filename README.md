@@ -13,6 +13,10 @@ Please find the source codes in the folder "PDE examples".
 
 The results in the corresponding manuscript are generated exclusively in Julia. We strongly recommend using the Julia code for speed, convergence, and robustness. However, we provide Pytorch code as well for users who may be interested in experimenting with KAN-ODEs in Python. Please find these in the folder "Lotka-Volterra-Pytorch".
 
+# Optimized LeanKAN implementation 
+
+Please see the following paper and GitHub repository for LeanKAN, our optimized KAN layer structure that includes multiplication: [Neural Networks paper](https://doi.org/10.1016/j.neunet.2025.107883), [Github](https://github.com/DENG-MIT/LeanKAN).
+
 # Citation
 
 If you use the code in your research or if you find our paper useful, please cite [this paper](https://www.sciencedirect.com/science/article/pii/S0045782524006522):
